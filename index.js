@@ -1,10 +1,25 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
+import dotenv from "dotenv";
+import bcrypt from "bcrypt";
+
+// Setup Express application
+const app = express();
+app.use(express.json());
+dotenv.config();
 
 // This makes a very secure random secret with every app reboot
-const secret = crypto.randomBytes(64).toString("hex");
-console.log({ secret });
+const secret = process.env.SECRET;
+
+async function hash(password) {
+  return await bcrypt.hash(password, 5);
+}
+
+async function checkHash(password, hash) {
+  return await bcrypt.compare(password, hash);
+}
+
+const users = [{ username: "rudesh", password: await hash("123") }];
 
 // This middleware can be used to check if a reqest contains a valid token
 function checkTokenMiddleware(req, res, next) {
@@ -30,20 +45,39 @@ function checkTokenMiddleware(req, res, next) {
     req.userData = {
       userId: payload.userId,
       username: payload.username,
-      admin: payload.admin,
     };
     next();
   });
 }
 
-// Setup Express application
-const app = express();
+app.post("/register", async (req, res) => {
+  const { username, password } = req.body;
+
+  const user = users.find((u) => u.username === username);
+
+  users.push({
+    username,
+    password: await hash(password),
+  });
+});
 
 // This endpoint returns a fresh token
-app.get("/token", (req, res) => {
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
   // TODO: Check login username / password somehow
-  const payload = { userId: 42, username: "Veera cat", admin: true };
-  const options = { expiresIn: "5m" };
+  if (!user) {
+    return res.sendStatus(401);
+  }
+
+  if (!checkHash(password, user.password)) {
+    return res.sendStatus(401);
+  }
+  const payload = { username: user.username };
+  const options = { expiresIn: process.env.JWT_EXPIRATION };
   const token = jwt.sign(payload, secret, options);
   res.send(token);
 });
@@ -54,7 +88,7 @@ app.get("/secure", checkTokenMiddleware, (req, res) => {
   res.send(`Hooray, ${req.userData.username}, you have access`);
 });
 
-const port = 8000;
+const port = process.env.PORT || 5050;
 app.listen(port, () => {
   console.log("Listening on http://localhost:" + port);
 });

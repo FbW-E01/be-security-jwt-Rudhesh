@@ -1,6 +1,22 @@
 ### Get token
-GET http://localhost:8000/token
+POST http://localhost:9000/login
+Content-Type: application/json
+
+{
+    "username": "Rudesh",
+    "password": "123"
+}
 
 ### Get secure message
-GET http://localhost:8000/secure
+GET http://localhost:9000/secure
 Authorization: Bearer aaaa.bbbb.cccc
+
+
+###
+POST http://localhost:9000/register
+Content-Type: application/json
+
+{
+    "username": "Rudesh",
+    "password": "123"
+}
